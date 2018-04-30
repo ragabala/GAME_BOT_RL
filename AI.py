@@ -4,6 +4,7 @@ import numpy
 epsilon_probability = 0.025 # this is for randomly selecting the current action very occationally for immediate rewards (exploration vs exploitation)
 gamma = 1.0 # is the discount factor
 iterations = 201 # number of iterations for each episode
+score_iterations = 100
 
 
 number_of_episodes = 100 #this is the number of episodes
@@ -18,7 +19,7 @@ num_states = 40
 
 
 
-#This is out bucketing algorithm
+#This is our bucketing algorithm
 #each observation is a state, Since it is continuous we discretize it into 40 states for each observation.
 #that is 40 states for positions and 40 states for velocity
 #this gives us a total combination of 40*40 = 2600 states (discrete velocities and positions)
@@ -67,40 +68,50 @@ def main():
 
     Q = numpy.zeros((num_states, num_states, 3))
     for i in range(number_of_episodes):
+        # this loop is the number of game iterations/episode that are run.. Each episode ends when it comes to the termination state
 
         total_reward = 0
         obs = env.reset()
         ## eta: learning rate is decreased at each step
         eta = max(learning_rate_threshold, init_learning_rate * (0.85 ** (i // 100)))
+        j = 0
         for j in range(iterations):
             # this is the current state
             pos, vel = build_policy(env, obs)
+            # once in a while we explore randomly. This is good for not sudden rewards, but good hidden future rewards
             if numpy.random.uniform(0, 1) < epsilon_probability:
                 action = numpy.random.choice(env.action_space.n)
             else:
+                # else we take an action which is also random but with higher transitional probability
                 q_value = Q[pos][vel]
                 q_value_future = numpy.exp(q_value)
                 prob = q_value_future / numpy.sum(q_value_future)
                 action = numpy.random.choice(env.action_space.n, p=prob)
 
+            # once we decide upon what action we will be taking we take that action and collect the reward and check the observations
             obs, reward, done, info  =  env.step(action)
             total_reward += reward
             # update q table
-            a_, b_ = build_policy(env, obs)
-            Q[pos][vel][action] = Q[pos][vel][action] + eta * (
-                        reward + gamma * numpy.max(Q[a_][b_]) - Q[pos][vel][action])
-            if done:
+            pos_next, vel_next = build_policy(env, obs)
 
+            # this is the all important step which computes our three dimentional Q table, based upon the actions which we take.
+            Q[pos][vel][action] = Q[pos][vel][action] + eta * (
+                        reward + gamma * numpy.max(Q[pos_next][vel_next]) - Q[pos][vel][action])
+            if done:
+                # if the episode ends... we stop this episode and start a new one
                 break
         if i % 100 == 0:
-            print('Iteration #%d -- Total reward = %d. -- moves = %d' % (i + 1, total_reward, j))
+            print('Iteration number : %d | moves for completion = %d' % (i + 1, j + 1))
 
-    print(Q)
 
+    #This is the actions which are the highest in each state
     solution_policy = numpy.argmax(Q, axis=2)
-    solution_policy_scores = [animate_solution(env, solution_policy, False) for _ in range(100)]
-    print("Average Q Reward = ", numpy.mean(solution_policy_scores))
+    # the score for the game is the average of rewards it receives with the the optimal policy for
+    average_reward_optimal = [animate_solution(env, solution_policy, False) for _ in range(score_iterations)]
+    print("Average Q Reward = ", numpy.mean(average_reward_optimal))
     animate_solution(env, solution_policy, True)
+    # we close the window that is opened
+    env.close()
 
 if __name__ == '__main__':
    main()
