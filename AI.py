@@ -3,10 +3,10 @@ import numpy
 
 epsilon_probability = 0.025 # this is for randomly selecting the current action very occationally for immediate rewards (exploration vs exploitation)
 gamma = 1.0 # is the discount factor
-iter = 201 # number of iterations for each episode
+iterations = 201 # number of iterations for each episode
 
 
-number_of_episodes = 5000 #this is the number of episodes
+number_of_episodes = 100 #this is the number of episodes
 
 
 # Learning rate
@@ -22,7 +22,7 @@ num_states = 40
 #each observation is a state, Since it is continuous we discretize it into 40 states for each observation.
 #that is 40 states for positions and 40 states for velocity
 #this gives us a total combination of 40*40 = 2600 states (discrete velocities and positions)
-def obs_to_state(env, obs):
+def build_policy(env, obs):
     """ Maps an observation to state """
     env_low = env.observation_space.low
     env_high = env.observation_space.high
@@ -34,16 +34,18 @@ def obs_to_state(env, obs):
 
 
 def animate_solution(env, policy=None, render=False):
-    obs = env.reset()
+    '''This is the merhod that uses the policies at the end and animates the entire game
+    This works based on starting from the initial state and '''
+    obs = env.reset() # this gives the initial state for the game
     total_reward = 0
     step_idx = 0
-    for _ in range(iter):
+    for _ in range(iterations):
         if render:
             env.render()
         if policy is None:
             action = env.action_space.sample()
         else:
-            a,b = obs_to_state(env, obs)
+            a,b = build_policy(env, obs)  # if the game is already in progress
             action = policy[a][b]
         obs, reward, done, _ = env.step(action)
         total_reward += gamma ** step_idx * reward
@@ -54,6 +56,7 @@ def animate_solution(env, policy=None, render=False):
 
 
 def main():
+    ''' This is the main function that is used for updating our qvalues and finaly printing out the scores and then animating the game play'''
     env_name = 'MountainCar-v0'
     env = gym.make(env_name)
     env.seed(0)
@@ -69,22 +72,21 @@ def main():
         obs = env.reset()
         ## eta: learning rate is decreased at each step
         eta = max(learning_rate_threshold, init_learning_rate * (0.85 ** (i // 100)))
-        for j in range(iter):
+        for j in range(iterations):
             # this is the current state
-            pos, vel = obs_to_state(env, obs)
+            pos, vel = build_policy(env, obs)
             if numpy.random.uniform(0, 1) < epsilon_probability:
                 action = numpy.random.choice(env.action_space.n)
             else:
-
-                Q_value = Q[pos][vel]
-                q_value_future = numpy.exp(Q_value)
+                q_value = Q[pos][vel]
+                q_value_future = numpy.exp(q_value)
                 prob = q_value_future / numpy.sum(q_value_future)
                 action = numpy.random.choice(env.action_space.n, p=prob)
 
             obs, reward, done, info  =  env.step(action)
             total_reward += reward
             # update q table
-            a_, b_ = obs_to_state(env, obs)
+            a_, b_ = build_policy(env, obs)
             Q[pos][vel][action] = Q[pos][vel][action] + eta * (
                         reward + gamma * numpy.max(Q[a_][b_]) - Q[pos][vel][action])
             if done:
