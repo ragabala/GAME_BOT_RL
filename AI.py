@@ -1,5 +1,6 @@
 import gym
 import numpy
+import time
 
 epsilon_probability = 0.025 # this is for randomly selecting the current action very occationally for immediate rewards (exploration vs exploitation)
 gamma = 1.0 # is the discount factor
@@ -7,7 +8,7 @@ iterations = 201 # number of iterations for each episode
 score_iterations = 100
 
 
-number_of_episodes = 100 #this is the number of episodes
+number_of_episodes = 1500 #this is the number of episodes
 
 
 # Learning rate
@@ -39,18 +40,17 @@ def animate_solution(env, policy=None, render=False):
     This works based on starting from the initial state and '''
     obs = env.reset() # this gives the initial state for the game
     total_reward = 0
-    step_idx = 0
+
     for _ in range(iterations):
         if render:
             env.render()
         if policy is None:
             action = env.action_space.sample()
         else:
-            a,b = build_policy(env, obs)  # if the game is already in progress
-            action = policy[a][b]
+            pos, vel = build_policy(env, obs)  # if the game is already in progress
+            action = policy[pos][vel]
         obs, reward, done, _ = env.step(action)
-        total_reward += gamma ** step_idx * reward
-        step_idx += 1
+        total_reward += reward
         if done:
             break
     return total_reward
@@ -72,6 +72,7 @@ def main():
 
         total_reward = 0
         obs = env.reset()
+
         ## eta: learning rate is decreased at each step
         eta = max(learning_rate_threshold, init_learning_rate * (0.85 ** (i // 100)))
         j = 0
@@ -88,6 +89,7 @@ def main():
                 prob = q_value_future / numpy.sum(q_value_future)
                 action = numpy.random.choice(env.action_space.n, p=prob)
 
+            #time.sleep(.300)
             # once we decide upon what action we will be taking we take that action and collect the reward and check the observations
             obs, reward, done, info  =  env.step(action)
             total_reward += reward
@@ -110,7 +112,9 @@ def main():
     average_reward_optimal = [animate_solution(env, solution_policy, False) for _ in range(score_iterations)]
     print("Average Q Reward = ", numpy.mean(average_reward_optimal))
     animate_solution(env, solution_policy, True)
-    # we close the window that is opened
+
+    # we close the window that is opened, after some time in the goal
+    time.sleep(5)
     env.close()
 
 if __name__ == '__main__':
