@@ -14,5 +14,12 @@ reach the goal.
 Explanation about the project is presented as a [paper
 ](https://github.com/ragabala/GAME_BOT_RL/blob/master/project_paper.pdf). The
 project requires OpenAi's [gym](https://pypi.org/project/gym/0.7.4/) package
-along with the ``numpy`` package installed.
+along with the ``numpy`` package installed 
+
+```python
+# Install the following
+pip install numpy
+pip install gym
+
+```
 
